@@ -1,0 +1,716 @@
+---
+title: "Deliverable2 -draft4"
+output: html_document
+---
+
+
+```{r, include=FALSE}
+setwd("/Users/antingc/Documents/")
+raw_data=read.csv('wine reviews.csv', stringsAsFactors = FALSE)
+```
+
+# Explore data
+The dataset contains 34 variables regarding wine reviews with 1231 observations.
+```{r}
+str(raw_data)
+```
+
+## Select variables for analysis
+We can eliminate any variables that we found not useful such as asins, dateAdded, dateUpdated, descriptions, dimension, ean, flavors, keys, reviews.date, reviews.dateAdded, reviews.dateSeen, reviews.didPurchase, reviews.sourceURLs, sizes, sourceURLs, upc
+
+```{r}
+raw_data2 = raw_data[,-c(2,5:11,17:20,25,31:33)]
+str(raw_data2)
+```
+
+## Check for missing values
+By using is.na( ), we found that the data contains missing values. However, some observations in the factor variables were recored as “” (or blank), which could not be detected by is.na( ). Therefore, we had to check for those blank values in each column in the next step.
+```{r}
+any(is.na(raw_data2))
+sum(is.na(raw_data2))
+```
+
+## Check for missing values in numerical variables
+0% of data are missing for the variable reviews.rating
+41% of data are missing for the variable reviews.id
+62.55% of data are missing for the variable reviews.numHelpful
+49.47% of data are missing for the variable reviews.doRecommend
+```{r}
+sum(is.na(raw_data2$reviews.rating))/nrow(raw_data2)*100
+sum(is.na(raw_data2$reviews.id))/nrow(raw_data2)*100
+sum(is.na(raw_data2$reviews.numHelpful))/nrow(raw_data2)*100
+sum(is.na(raw_data2$reviews.doRecommend))/nrow(raw_data2)*100
+```
+
+## Check for missing values in factor variables
+Since some blank observations were recorded as "", we could not detect them with is.na( ).
+Thus, we will explore how many "" appeared in each variable and counted them as missing values.
+```{r}
+#id
+sum(raw_data2$id == '')/nrow(raw_data2)*100 #0%
+
+#brand
+sum(raw_data2$brand == '')/nrow(raw_data2)*100 #0%
+
+#categories
+sum(raw_data2$categories == '')/nrow(raw_data2)*100 #0%
+
+#manufacturer
+sum(raw_data2$manufacturer == '')/nrow(raw_data2)*100 #63.03818%
+
+#manufacturerNumber
+sum(raw_data2$manufacturerNumber == '')/nrow(raw_data2)*100 #22.25833%
+
+#name
+sum(raw_data2$name == '')/nrow(raw_data2)*100 #0%
+
+#primaryCategories
+sum(raw_data2$primaryCategories == '')/nrow(raw_data2)*100 #0%
+
+#quantities
+sum(raw_data2$quantities == '')/nrow(raw_data2)*100 #85.29651%
+
+#reviews.text
+sum(raw_data2$reviews.text == '')/nrow(raw_data2)*100 #0.08123477%
+
+#reviews.title
+sum(raw_data2$reviews.title == '')/nrow(raw_data2)*100 #3.086921%
+
+#reviews.userCity
+sum(raw_data2$reviews.userCity == '')/nrow(raw_data2)*100 #93.34%
+
+#reviews.userProvince
+sum(raw_data2$reviews.userProvince == '')/nrow(raw_data2)*100 #99.26889%
+
+#reviews.username
+sum(raw_data2$reviews.username == '')/nrow(raw_data2)*100 #0.08123477%
+
+#weight
+sum(raw_data2$weight == '')/nrow(raw_data2)*100 #42.97319%
+```
+Since reviews.id, reviews.numHelpful, reviews.doRecommend, manufacturer, manufacturerNumber quantities, reviews.userCity, reviews.userProvince, and weight have significant amount of missing data (more than 10%), we decide to drop these variables.
+```{r}
+library(dplyr)
+library(tidyverse)
+raw_data3 <- select(raw_data2, -reviews.id, -reviews.numHelpful, -reviews.doRecommend,-manufacturer, -manufacturerNumber, - quantities, - reviews.userCity, -reviews.userProvince, - weight)
+
+str(raw_data3)
+```
+
+We discard the rows containing missing values for reviews.text, reviews.title, and reviews.username because there are not many missing values.
+```{r}
+raw_data4 = raw_data3
+raw_data4 = raw_data3[!(raw_data3$reviews.text == '' | raw_data3$reviews.title == '' | raw_data3$reviews.username == ''),]
+str(raw_data4)
+```
+
+
+To confirm that there was no “” left in those variables.
+```{r}
+sum(raw_data4$reviews.text == '')
+sum(raw_data4$reviews.title == '')
+sum(raw_data4$reviews.username == '')
+```
+
+
+## Export the clean data to .csv file
+```{r}
+write.csv(raw_data4, 'clean_data3.csv')
+```
+
+
+Import clean data
+```{r}
+setwd("/Users/antingc/Documents/")
+df=read.csv('clean_data3.csv')
+```
+
+
+
+Explore Data
+```{r}
+str(df)
+```
+Change variable name
+```{r}
+df$review = df$reviews.text
+df$points = df$reviews.rating
+```
+
+
+```{r}
+median(df$points) #median points
+mean(df$points) #mean points
+
+library(dplyr)
+df%>%
+  summarize(average_rating = mean(points), median_rating = median(points))
+
+summary(df$points) #median 5, mean = 4.598, min = 1, max = 5
+```
+
+
+Convert review as character
+```{r}
+class(df$review)
+df$review=as.character(df$review)
+df$title=as.character(df$reviews.title)
+class(df$review)
+mean(df$points)
+```
+
+Distribution of point
+```{r}
+install.packages('ggplot2');install.packages('ggthemes')
+library(ggplot2); library(ggthemes) 
+ggplot(data=df,aes(x=points))+ geom_histogram(fill='sienna')+ theme_economist()
+```
+
+
+Character, Words and Sentences for all Reviews
+
+```{r}
+mean_char = mean(nchar(df$review)); mean_char
+median_char = median(nchar(df$review)); median_char
+```
+
+
+```{r}
+df$review[555]
+```
+
+```{r}
+install.packages('stringr')
+library(stringr)
+mean_words = mean(str_count(string = df$review,pattern = '\\S+')); mean_words
+median_words = median(str_count(string = df$review,pattern = '\\S+')); median_words
+```
+Description length and points
+```{r}
+#Description length in characters
+cor.test(nchar(df$review),df$points)
+
+#Description length in words
+cor.test(str_count(string = df$review,pattern = '\\S+'),df$points)
+
+#Description length in sentences
+cor.test(str_count(string = df$review,pattern = "[A-Za-z,;'\"\\s]+[^.!?]*[.?!]"),df$points)
+```
+Screaming Reviews
+```{r}
+proportionUpper = str_count(df$review,pattern='[A-Z]')/nchar(df$review)
+cor(proportionUpper,df$points)
+plot(proportionUpper,df$points)
+```
+Exclamation marks
+```{r}
+summary(str_count(df$review,pattern='!')) 
+proportionExclamation = str_count(df$review,pattern='!')/nchar(df$review)
+cor(proportionExclamation,df$points)
+
+str_detect(string=tolower(videogame$review),pattern='minecraft| mine craft'))
+```
+Networks of Description and Title Words- how many times each pair of words occurs together in a review.
+```{r}
+positive1=str_count(string=tolower(df$review),pattern='love|taste|mix|drink|best')/nchar(df$review)
+cor(positive1,df$points)
+sweet=str_count(string=tolower(df$review),pattern='sweet')/nchar(df$review)
+cor(sweet,df$points)
+bitter=str_count(string=tolower(df$review),pattern='bitter')/nchar(df$review)
+cor(bitter,df$points)
+sour=str_count(string=tolower(df$review),pattern='sour')/nchar(df$review)
+cor(sour,df$points)
+smooth=str_count(string=tolower(df$review),pattern='smooth')/nchar(df$review)
+cor(smooth,df$points)
+not=str_count(string=tolower(df$title),pattern='not|dont|disappoint|never')/str_count(string = df$title,pattern = '\\S+')
+cor(not,df$points)
+bitter=str_count(string=tolower(df$review),pattern='bitters')/str_count(string = df$review,pattern = '\\S+')
+cor(bitter,df$points)
+```
+```{r}
+highly_recommend=df[str_detect(string=tolower(df$review),pattern='highly recommend'),];
+highly_recommend
+hist(highly_recommend$points,main = "Histogram of reviews with the word 'highly recommend'",xlab="Points",col="pink",breaks=5)
+```
+```{r}
+red_wine=df[str_detect(string=tolower(df$review),pattern='red wine'),];
+red_wine
+hist(red_wine$points,main = "Histogram of reviews with the word 'red wine'",xlab="Points",col="red",breaks=5)
+```
+
+
+In terms of Description
+```{r}
+review_desc <- tibble(id = df$id, 
+                        desc = df$review)
+
+review_desc %>% 
+  select(desc) %>% 
+  sample_n(5)
+
+library(tidytext)
+
+output<- 'word'
+input<- 'desc'
+
+review_desc <- review_desc %>% 
+  unnest_tokens_(output, input) %>% 
+  anti_join(stop_words)
+review_desc
+```
+
+```{r}
+install.packages('widyr')
+library(widyr)
+
+desc_word_pairs <- review_desc %>% 
+  pairwise_count(word, id, group, sort = TRUE, upper = FALSE)
+
+desc_word_pairs
+```
+```{r}
+install.packages('ggraph')
+library(ggplot2)
+library(igraph)
+library(ggraph)
+
+set.seed(1234)
+desc_word_pairs %>%
+  filter(n >= 18) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n, edge_width = n), edge_colour = "cyan4") +
+  geom_node_point(size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE, 
+                 point.padding = unit(0.2, "lines")) +
+  theme_void()
+```
+```{r}
+set.seed(1234)
+desc_word_pairs %>%
+  filter(n >= 22) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n, edge_width = n), edge_colour = "cyan4") +
+  geom_node_point(size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE, 
+                 point.padding = unit(0.2, "lines")) +
+  theme_void()
+```
+```{r}
+df$review[736]
+```
+
+In terms of Title
+```{r}
+review_tit <- tibble(id = df$id, 
+                        desc = df$title)
+
+review_tit %>% 
+  select(desc) %>% 
+  sample_n(5)
+
+output<- 'word'
+input<- 'desc'
+
+review_tit <- review_tit %>% 
+  unnest_tokens_(output, input) %>% 
+  anti_join(stop_words)
+review_tit
+```
+```{r}
+tit_word_pairs <- review_tit %>% 
+  pairwise_count(word, id, sort = TRUE, upper = FALSE)
+
+tit_word_pairs
+```
+```{r}
+set.seed(1234)
+tit_word_pairs %>%
+  filter(n >= 8) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n, edge_width = n), edge_colour = "cyan4") +
+  geom_node_point(size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE, 
+                 point.padding = unit(0.2, "lines")) +
+  theme_void()
+```
+```{r}
+
+tit_pair1=grepl("Love", df$title)
+tit_pair2=grepl("buy", df$title)
+tit_pair_1=which(tit_pair1==TRUE);tit_pair_1
+tit_pair_2=which(tit_pair2==TRUE);tit_pair_2
+
+#df$title[c(1,101,146)]
+```
+```{r}
+dat <- data_frame(group = rep(1:5, each = 2),
+letter = c("a", "b",
+"a", "c",
+"a", "c",
+"b", "e",
+"b", "f"))
+# count the number of times two letters appear together
+pairwise_count(dat, letter, group)
+pairwise_count(dat, letter, group, sort = TRUE)
+pairwise_count(dat, letter, group, sort = TRUE, diag = TRUE)
+```
+
+
+Most common words
+
+```{r}
+install.packages('qdap');library(qdap)
+freq_terms(text.var = df$review,top = 25)
+```
+
+
+Remove stop word
+
+```{r}
+freq_terms(text.var=df$review,top=25,stopwords = Top200Words)
+plot(freq_terms(text.var=df$review,top=25,stopwords = Top200Words))
+```
+The word "wine" "it's", "carmex" and "I've" should be removed.
+
+Words that make a review useful
+```{r}
+plot(freq_terms(text.var=df$review,top=25,stopwords = c(Top200Words,"wine","it's","i've","i'm")))
+```
+
+
+## Sentiment analysis
+
+```{r}
+install.packages('tidytext')
+library(dplyr); library(tidytext) 
+df %>%
+  select(id,review)%>%
+  group_by(id)%>%
+  unnest_tokens(output = word,input=review)%>% 
+  count()
+```
+
+Total words
+
+```{r}
+df %>%
+  select(id,review)%>%
+  group_by(id)%>%
+  unnest_tokens(output = word,input=review)%>% 
+  ungroup()%>%
+  count()
+```
+
+
+
+
+# Bing Lexicon - Explore positive and negative words in review
+First 50 words in the Bing Lexicon
+```{r}
+as.data.frame(get_sentiments('bing'))[1:50,]
+```
+
+
+```{r}
+df%>%
+  group_by(id)%>%
+  unnest_tokens(output = word, input = review)%>% 
+  inner_join(get_sentiments('bing'))%>% 
+  group_by(sentiment)
+```
+
+Positive and Negative Words in review
+```{r}
+df%>%
+  group_by(id)%>%
+  unnest_tokens(output = word, input = review)%>% 
+  inner_join(get_sentiments('bing'))%>% 
+  group_by(sentiment)%>%
+  count()
+```
+
+Graph showing positive and negative reviews
+```{r}
+df%>%
+  group_by(id)%>%
+  unnest_tokens(output = word, input = review)%>%
+  inner_join(get_sentiments('bing'))%>%
+  group_by(sentiment)%>%
+  count()%>% 
+  ggplot(aes(x=sentiment,y=n,fill=sentiment))+geom_col()+theme_economist()+guides(fill=F)
+```
+
+Proportion of positive word
+
+```{r}
+df %>%
+  select(id,review)%>%
+  group_by(id)%>% 
+  unnest_tokens(output=word,input=review)%>% 
+  ungroup()%>% 
+  inner_join(get_sentiments('bing'))%>% 
+  group_by(sentiment)%>%
+  summarize(n = n())%>% 
+  mutate(proportion = n/sum(n))
+```
+
+
+Positive Review, helpful?
+
+```{r}
+df %>% 
+  select(id,review,points) %>% 
+  group_by(id)%>%
+  unnest_tokens(output=word,input=review)%>% 
+  ungroup()%>% 
+  inner_join(get_sentiments('bing'))%>%
+  group_by(points,sentiment)%>% 
+  summarize(n = n())%>%
+  mutate(proportion = n/sum(n))
+```
+
+
+```{r}
+df %>%
+  select(id,review,points)%>%
+  group_by(id)%>%
+  unnest_tokens(output=word,input=review)%>%
+  ungroup()%>%
+  inner_join(get_sentiments('bing'))%>%
+  group_by(points,sentiment)%>%
+  summarize(n = n())%>%
+  mutate(proportion = n/sum(n))%>%
+  ggplot(aes(x=points,y=proportion,fill=sentiment))+geom_col()+theme_economist()
+```
+
+Fraction of Positive Words in each review
+
+```{r}
+df%>%
+  group_by(id)%>%
+  unnest_tokens(output = word, input = review)%>% 
+  inner_join(get_sentiments('bing'))%>%
+  group_by(id)%>%
+  summarize(positivity = sum(sentiment=='positive')/n())
+```
+
+Let us see if reviews with a lot of positive words are rated favorably. (Correlation of positive review and points)
+
+
+```{r}
+df%>%
+  group_by(id)%>%
+  unnest_tokens(output = word, input = review)%>% 
+  inner_join(get_sentiments('bing'))%>% 
+  group_by(id,points)%>%
+  summarize(positivity = sum(sentiment=='positive')/n())%>% 
+  ungroup()%>%
+  summarize(correlation = cor(positivity,points))
+```
+
+Common sentiment words
+```{r}
+df %>% 
+  select(id,review,points) %>% 
+  group_by(id)%>%
+  unnest_tokens(output=word,input=review)%>% 
+  ungroup()%>% 
+  inner_join(get_sentiments('bing'))%>%
+  group_by(word,sentiment)%>% 
+  summarize(n = n()) %>%
+  arrange(desc(n))
+```
+
+Common sentiment words in bar chart
+```{r}
+bing_common_word <- df %>% 
+  select(id,review,points) %>% 
+  group_by(id)%>%
+  unnest_tokens(output=word,input=review)%>% 
+  ungroup()%>% 
+  inner_join(get_sentiments('bing'))%>%
+  group_by(word,sentiment)%>% 
+  summarize(n = n()) %>%
+  arrange(desc(n))
+
+
+  bing_common_word %>% 
+    group_by(sentiment) %>%
+    top_n(10) %>%
+    ggplot(aes(reorder(word, n), n, fill = sentiment)) +
+      geom_bar(alpha = 0.8, stat = "identity", show.legend = FALSE) +
+      facet_wrap(~sentiment, scales = "free_y") +
+      labs(y = "Contribution to sentiment", x = NULL) +
+      coord_flip()
+```
+
+
+
+#NRC Lexicon - Explore emotion in review
+
+```{r}
+get_sentiments('nrc')%>% 
+  group_by(sentiment)%>% 
+  count()
+```
+
+Emotions in Reviews
+
+```{r}
+df%>%
+  group_by(id)%>%
+  unnest_tokens(output = word, input = review)%>% 
+  inner_join(get_sentiments('nrc'))%>%
+  group_by(sentiment)%>% 
+  count()
+```
+
+Compare in sentiment (emotions) in bar chart
+```{r}
+df%>%
+  group_by(id)%>%
+  unnest_tokens(output = word, input = review)%>%
+  inner_join(get_sentiments('nrc'))%>%
+  group_by(sentiment)%>%
+  count()%>%
+  ggplot(aes(x=reorder(sentiment,X = n),y=n,fill=sentiment))+geom_col()+guides(fill=F)+coord_flip()+theme_wsj()
+```
+
+Ratings of all Reviews based on Emotion Expressed
+```{r}
+df%>%
+  group_by(id)%>%
+  unnest_tokens(output = word, input = review)%>%
+  inner_join(get_sentiments('nrc'))%>%
+  group_by(id,sentiment,points)%>%
+  count()%>%
+  group_by(sentiment, points)%>%
+  summarize(n = mean(n))%>%
+  data.frame()
+```
+```{r}
+df%>%
+  group_by(id)%>%
+  unnest_tokens(output = word, input = review)%>%
+  inner_join(get_sentiments('nrc'))%>%
+  group_by(id,sentiment,points)%>%
+  count()%>%
+  group_by(sentiment, points)%>%
+  summarize(n = mean(n))%>%
+  ungroup()%>%
+  ggplot(aes(x=points,y=n,fill=points))+
+  geom_col()+
+  facet_wrap(~sentiment)+
+  guides(fill=F)+coord_flip()
+```
+Correlation between emotion expressed and points.
+ The correlation of all the sentiment vs points (ratings) is very low, thus there is no correlation
+```{r}
+df%>%
+  group_by(id)%>%
+  unnest_tokens(output = word, input = review)%>%
+  inner_join(get_sentiments('nrc'))%>%
+  group_by(id,sentiment,points)%>%
+  count()%>%
+  ungroup()%>%
+  group_by(sentiment)%>%
+  summarize(correlation = cor(n,points))
+```
+
+Scatterplot of relationship between emotion expressed and points
+```{r}
+df%>%
+  group_by(id)%>%
+  unnest_tokens(output = word, input = review)%>%
+  inner_join(get_sentiments('nrc'))%>%
+  group_by(id,sentiment,points)%>%
+  count()%>%
+  ungroup()%>%
+  group_by(sentiment)%>%
+  ggplot(aes(x=points,y=n))+geom_point()+facet_wrap(~sentiment)+geom_smooth(method='lm',se=F)
+```
+
+
+#afinn Lexicon
+
+```{r}
+as.data.frame(get_sentiments('afinn'))[1:25,]
+```
+
+Next, we will examine the sentiment of all reviews.
+
+
+```{r}
+df %>%
+  select(id,review)%>%
+  group_by(id)%>%
+  unnest_tokens(output=word,input=review)%>%
+  inner_join(get_sentiments('afinn'))%>%
+  summarize(reviewSentiment = mean(score))%>%
+  ungroup()%>%
+  summarize(min=min(reviewSentiment),max=max(reviewSentiment),median=median(reviewSentiment),mean=mean(reviewSentiment))
+```
+
+Distribution of sentiments
+```{r}
+df %>%
+  select(id,review)%>%
+  group_by(id)%>%
+  unnest_tokens(output=word,input=review)%>%
+  inner_join(get_sentiments('afinn'))%>%
+  summarize(reviewSentiment = mean(score))%>%
+  ungroup()%>%
+  ggplot(aes(x=reviewSentiment,fill=reviewSentiment>0))+
+  geom_histogram(binwidth = 0.1)+
+  scale_x_continuous(breaks=seq(-5,5,1))+scale_fill_manual(values=c('tomato','seagreen'))+
+  guides(fill=F)+
+  theme_wsj()
+```
+
+#Word cloud
+
+```{r}
+install.packages('wordcloud')
+library(wordcloud)
+wordcloudData = 
+  df%>%
+  group_by(id)%>%
+  unnest_tokens(output=word,input=review)%>%
+  anti_join(stop_words)%>%
+  group_by(word)%>%
+  summarize(freq = n())%>%
+  arrange(desc(freq))%>%
+  ungroup()%>%
+  data.frame()
+
+#wordcloudData
+library(wordcloud)
+set.seed(617)
+wordcloud(words = wordcloudData$word,wordcloudData$freq,scale=c(2,0.5),max.words = 100,colors=brewer.pal(9,"Spectral"))
+```
+
+Comparison Cloud
+
+```{r}
+library(tidyr)
+wordcloudData = 
+  df%>%
+  group_by(id)%>%
+  unnest_tokens(output=word,input=review)%>%
+  anti_join(stop_words)%>%
+  inner_join(get_sentiments('bing'))%>%
+  ungroup()%>%
+  count(sentiment,word,sort=T)%>%
+  spread(key=sentiment,value = n,fill=0)%>%
+  data.frame()
+rownames(wordcloudData) = wordcloudData[,'word']
+wordcloudData = wordcloudData[,c('positive','negative')]
+set.seed(617)
+comparison.cloud(term.matrix = wordcloudData,scale = c(2,0.5),max.words = 200, rot.per=0)
+```
+
+
+```
